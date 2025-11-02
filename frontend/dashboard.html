@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WMS Dismantle - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold text-gray-800">WMS Dismantle</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-gray-700" id="userName"></span>
+                    <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium" id="userRole"></span>
+                    <button id="chatToggleBtn" onclick="toggleChatSidebar()" class="hidden relative p-2 text-gray-600 hover:text-gray-900">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+                        </svg>
+                        <span id="chatNotifBadge" class="hidden absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center"></span>
+                    </button>
+                    <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Upload Section (Admin Only) -->
+        <div id="adminSection" class="hidden mb-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Upload Work Orders Excel</h2>
+                <input type="file" id="woExcelFile" accept=".xlsx,.xls" class="mb-4 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                <button onclick="uploadWOExcel()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full">
+                    Upload WO Excel
+                </button>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Upload Users Excel</h2>
+                <input type="file" id="userExcelFile" accept=".xlsx,.xls" class="mb-4 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100">
+                <button onclick="uploadUserExcel()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full">
+                    Upload User Excel
+                </button>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="bg-white p-6 rounded-lg shadow mb-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Filter Work Orders</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                    <select id="filterStatus" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">All Status</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Vendor</label>
+                    <select id="filterVendor" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">All Vendors</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">City</label>
+                    <select id="filterCity" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">All Cities</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button onclick="loadWorkOrders()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 w-full">
+                        Apply Filter
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Work Orders Table -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-800">Work Orders</h2>
+                <p class="text-sm text-gray-600 mt-1">Total: <span id="totalRecords">0</span> records</p>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WO ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">City</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th id="approvalColumn" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden">Approval</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated By</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="woTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Data will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                <div class="text-sm text-gray-700">
+                    Page <span id="currentPage">1</span> of <span id="totalPages">1</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="previousPage()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">
+                        Previous
+                    </button>
+                    <button onclick="nextPage()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">
+                        Next
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for WO Detail -->
+    <div id="woModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Work Order Detail</h3>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="woDetailContent" class="space-y-4">
+                <!-- Detail will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Config untuk environment detection -->
+    <script src="config.js"></script>
+
+    <script>
+    const API_URL = window.APP_CONFIG.API_URL;
+    const WS_URL = window.APP_CONFIG.WS_URL;
+        let currentPage = 1;
+        let totalPages = 1;
+        const pageSize = 10;
+
+        // Check authentication
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+
+        // Display user info
+        document.getElementById('userName').textContent = user.full_name || user.username;
+        document.getElementById('userRole').textContent = user.role;
+
+        // Show admin section if user is admin
+        if (user.role === 'admin') {
+            document.getElementById('adminSection').classList.remove('hidden');
+        }
+
+        // Show approval column for admin regional
+        if (user.role === 'admin_regional' || user.role === 'admin') {
+            document.getElementById('approvalColumn').classList.remove('hidden');
+        }
+
+        let currentUser = user;
+
+        async function apiCall(endpoint, options = {}) {
+            const response = await fetch(`${API_URL}${endpoint}`, {
+                ...options,
+                headers: {
+                    ...options.headers,
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.status === 401) {
+                logout();
+                return;
+            }
+
+            return response;
+        }
+
+        async function loadWorkOrders() {
+            const status = document.getElementById('filterStatus').value;
+            const vendor = document.getElementById('filterVendor').value;
+            const city = document.getElementById('filterCity').value;
+
+            const params = new URLSearchParams({
+                skip: (currentPage - 1) * pageSize,
+                limit: pageSize
+            });
+
+            if (status) params.append('status', status);
+            if (vendor) params.append('vendor', vendor);
+            if (city) params.append('city', city);
+
+            try {
+                const response = await apiCall(`/work-orders?${params}`);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    // Update filter options
+                    updateFilterOptions(data.data.filter_options);
+
+                    // Update pagination info
+                    document.getElementById('totalRecords').textContent = data.data.total_records;
+                    document.getElementById('currentPage').textContent = data.data.page_info.current_page;
+                    document.getElementById('totalPages').textContent = data.data.page_info.total_pages;
+                    totalPages = data.data.page_info.total_pages;
+
+                    // Update table
+                    const tbody = document.getElementById('woTableBody');
+                    tbody.innerHTML = '';
+
+                    data.data.records.forEach(wo => {
+                        const approvalCell = (currentUser.role === 'admin_regional' || currentUser.role === 'admin') ? `
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                ${wo.updated_by ? `<span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getApprovalColor(wo.approval_status || 'pending')}">
+                                    ${wo.approval_status || 'pending'}
+                                </span>` : '-'}
+                            </td>
+                        ` : '';
+                        
+                        const row = `
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${wo.wo_id_xl}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${wo.customer_id}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${wo.city}</td>
+                                <td class="px-6 py-4 text-sm text-gray-500">${wo.product_name || '-'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(wo.status_wo)}">
+                                        ${wo.status_wo || '-'}
+                                    </span>
+                                </td>
+                                ${approvalCell}
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${wo.vendor || '-'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${wo.updated_by || '-'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <button onclick="viewDetail(${wo.id})" class="text-blue-600 hover:text-blue-900">View</button>
+                                </td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading work orders:', error);
+                alert('Error loading work orders');
+            }
+        }
+
+        function updateFilterOptions(options) {
+            // Update status filter
+            const statusSelect = document.getElementById('filterStatus');
+            const currentStatus = statusSelect.value;
+            statusSelect.innerHTML = '<option value="">All Status</option>';
+            options.status.forEach(status => {
+                statusSelect.innerHTML += `<option value="${status}" ${status === currentStatus ? 'selected' : ''}>${status}</option>`;
+            });
+
+            // Update vendor filter
+            const vendorSelect = document.getElementById('filterVendor');
+            const currentVendor = vendorSelect.value;
+            vendorSelect.innerHTML = '<option value="">All Vendors</option>';
+            options.vendors.forEach(vendor => {
+                vendorSelect.innerHTML += `<option value="${vendor}" ${vendor === currentVendor ? 'selected' : ''}>${vendor}</option>`;
+            });
+
+            // Update city filter
+            const citySelect = document.getElementById('filterCity');
+            const currentCity = citySelect.value;
+            citySelect.innerHTML = '<option value="">All Cities</option>';
+            options.cities.forEach(city => {
+                citySelect.innerHTML += `<option value="${city}" ${city === currentCity ? 'selected' : ''}>${city}</option>`;
+            });
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'Scheduled': 'bg-yellow-100 text-yellow-800',
+                'In Progress': 'bg-blue-100 text-blue-800',
+                'Completed': 'bg-green-100 text-green-800',
+                'Full Collected': 'bg-green-100 text-green-800',
+                'Not Collected': 'bg-red-100 text-red-800',
+                'Partial Collected': 'bg-orange-100 text-orange-800'
+            };
+            return colors[status] || 'bg-gray-100 text-gray-800';
+        }
+
+        function getApprovalColor(status) {
+            const colors = {
+                'pending': 'bg-yellow-100 text-yellow-800',
+                'approved': 'bg-green-100 text-green-800',
+                'rejected': 'bg-red-100 text-red-800'
+            };
+            return colors[status] || 'bg-gray-100 text-gray-800';
+        }
+
+        async function approveWO(woId, action) {
+            const notes = document.getElementById('approvalNotes').value;
+            
+            if (action === 'rejected' && !notes) {
+                alert('Catatan wajib diisi saat reject WO');
+                return;
+            }
+
+            if (!confirm(`Apakah Anda yakin ingin ${action === 'approved' ? 'approve' : 'reject'} WO ini?`)) {
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('action', action);
+                if (notes) formData.append('notes', notes);
+
+                const response = await apiCall(`/work-orders/${woId}/approve`, {
+                    method: 'PUT',
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    alert(`WO berhasil di-${action}`);
+                    document.getElementById('woModal').classList.add('hidden');
+                    loadWorkOrders();
+                } else {
+                    alert(result.detail || `Gagal ${action} WO`);
+                }
+            } catch (error) {
+                console.error('Error approving WO:', error);
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        async function viewDetail(woId) {
+            try {
+                const response = await apiCall(`/work-orders/${woId}`);
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    const wo = result.data;
+                    const photos = wo.photos;
+
+                    let photosHtml = '<div class="grid grid-cols-2 gap-4 mt-4">';
+                    Object.entries(photos).forEach(([key, value]) => {
+                        if (value && key !== 'sn_ocr_result') {
+                            photosHtml += `
+                                <div>
+                                    <p class="text-sm font-medium text-gray-700 capitalize">${key.replace('foto_', '').replace('_', ' ')}</p>
+                                    <img src="${API_URL}/${value}" alt="${key}" class="mt-2 rounded border w-full h-32 object-cover">
+                                </div>
+                            `;
+                        }
+                    });
+                    photosHtml += '</div>';
+
+                    document.getElementById('woDetailContent').innerHTML = `
+                        <div class="space-y-3">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500">WO ID</p>
+                                    <p class="text-base font-semibold">${wo.wo_id_xl}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500">Customer ID</p>
+                                    <p class="text-base">${wo.customer_id}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500">City</p>
+                                    <p class="text-base">${wo.city}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500">Region</p>
+                                    <p class="text-base">${wo.region || '-'}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500">Product</p>
+                                    <p class="text-base">${wo.product_name || '-'}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500">Status</p>
+                                    <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(wo.status_wo)}">
+                                        ${wo.status_wo || '-'}
+                                    </span>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500">Vendor</p>
+                                    <p class="text-base">${wo.vendor || '-'}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500">Updated By</p>
+                                    <p class="text-base">${wo.updated_by || '-'}</p>
+                                </div>
+                                ${wo.approval_status ? `
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500">Approval Status</p>
+                                    <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getApprovalColor(wo.approval_status)}">
+                                        ${wo.approval_status}
+                                    </span>
+                                </div>
+                                ` : ''}
+                                ${wo.approval_by ? `
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500">Approved By</p>
+                                    <p class="text-base">${wo.approval_by}</p>
+                                </div>
+                                ` : ''}
+                            </div>
+                            ${wo.approval_notes ? `
+                                <div class="bg-yellow-50 p-3 rounded">
+                                    <p class="text-sm font-medium text-gray-700">Approval Notes</p>
+                                    <p class="text-base">${wo.approval_notes}</p>
+                                </div>
+                            ` : ''}
+                            ${photos.sn_ocr_result ? `
+                                <div class="bg-blue-50 p-3 rounded">
+                                    <p class="text-sm font-medium text-gray-700">SN OCR Result</p>
+                                    <p class="text-base font-mono">${photos.sn_ocr_result}</p>
+                                </div>
+                            ` : ''}
+                            ${photosHtml}
+                            ${currentUser.role === 'admin_regional' && wo.updated_by && (!wo.approval_status || wo.approval_status === 'pending') ? `
+                                <div class="border-t pt-4 mt-4">
+                                    <p class="text-sm font-medium text-gray-700 mb-2">Approval Action</p>
+                                    <textarea id="approvalNotes" placeholder="Catatan approval (opsional)" class="w-full px-3 py-2 border border-gray-300 rounded mb-3" rows="3"></textarea>
+                                    <div class="flex space-x-3">
+                                        <button onclick="approveWO(${woId}, 'approved')" class="flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                            Approve
+                                        </button>
+                                        <button onclick="approveWO(${woId}, 'rejected')" class="flex-1 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+                                            Reject
+                                        </button>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+
+                    document.getElementById('woModal').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error loading detail:', error);
+                alert('Error loading work order detail');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('woModal').classList.add('hidden');
+        }
+
+        async function uploadWOExcel() {
+            const fileInput = document.getElementById('woExcelFile');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await apiCall('/upload/excel', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    alert(`Success! ${result.detail.new_records} new records added, ${result.detail.duplicate_records} duplicates skipped`);
+                    fileInput.value = '';
+                    loadWorkOrders();
+                } else {
+                    alert('Error: ' + result.detail);
+                }
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                alert('Error uploading file');
+            }
+        }
+
+        async function uploadUserExcel() {
+            const fileInput = document.getElementById('userExcelFile');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await apiCall('/upload/users', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    alert(`Success! ${result.detail.new_records} new users added`);
+                    fileInput.value = '';
+                } else {
+                    alert('Error: ' + result.detail);
+                }
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                alert('Error uploading file');
+            }
+        }
+
+        function nextPage() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                loadWorkOrders();
+            }
+        }
+
+        function previousPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                loadWorkOrders();
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        }
+
+        // Load work orders on page load
+        loadWorkOrders();
+    </script>
+
+    <!-- Chat Sidebar (Admin Regional Only) -->
+    <div id="chatSidebar" class="hidden fixed top-0 right-0 h-full w-96 bg-white shadow-2xl z-50 flex flex-col">
+        <div class="bg-blue-600 text-white p-4 flex items-center justify-between">
+            <h3 class="font-bold text-lg">Chat dengan Teknisi</h3>
+            <button onclick="toggleChatSidebar()" class="p-2 hover:bg-blue-700 rounded-full">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Chat Room List -->
+        <div id="chatRoomList" class="flex-1 overflow-y-auto border-r">
+            <div class="p-2 text-center text-gray-500">Loading...</div>
+        </div>
+
+        <!-- Active Chat -->
+        <div id="activeChat" class="hidden flex-1 flex flex-col">
+            <div class="bg-gray-100 px-4 py-3 border-b flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <button onclick="backToRoomList()" class="p-1 hover:bg-gray-200 rounded">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                    </button>
+                    <div>
+                        <p class="font-semibold text-gray-800" id="activeChatTeknisi"></p>
+                        <p class="text-xs text-gray-500">Teknisi</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="chatMessagesContainer" class="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+                <!-- Messages will appear here -->
+            </div>
+
+            <div class="bg-white border-t p-3">
+                <div class="flex space-x-2">
+                    <input type="text" id="chatMessageInput" placeholder="Ketik pesan..." 
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onkeypress="if(event.key==='Enter') sendChatMessage()">
+                    <button onclick="sendChatMessage()" class="bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chatWs = null;
+        let activeChatRoom = null;
+        let chatRooms = [];
+
+        function toggleChatSidebar() {
+            const sidebar = document.getElementById('chatSidebar');
+            if (sidebar.classList.contains('hidden')) {
+                sidebar.classList.remove('hidden');
+                loadChatRooms();
+            } else {
+                sidebar.classList.add('hidden');
+            }
+        }
+
+        async function initChatSystem() {
+            if (!(currentUser.role === 'admin_regional' || currentUser.role === 'admin')) return;
+
+            // Show chat button
+            document.getElementById('chatToggleBtn').classList.remove('hidden');
+
+            // Connect WebSocket
+            connectChatWebSocket();
+
+            // Check unread periodically
+            setInterval(checkUnreadChats, 15000);
+        }
+
+        function connectChatWebSocket() {
+            chatWs = new WebSocket(`${WS_URL}/ws/chat/${currentUser.username}`);
+
+            chatWs.onopen = () => {
+                console.log('Chat WebSocket connected');
+            };
+
+            chatWs.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                if (data.type === 'new_message') {
+                    // Add message to active chat if it's open
+                    if (activeChatRoom && data.message.room_id === activeChatRoom.id) {
+                        addMessageToChatUI(data.message);
+                    } else {
+                        // Show notification badge
+                        checkUnreadChats();
+                    }
+
+                    // Refresh room list
+                    loadChatRooms();
+                }
+            };
+
+            chatWs.onclose = () => {
+                console.log('Chat WebSocket disconnected, reconnecting...');
+                setTimeout(connectChatWebSocket, 3000);
+            };
+        }
+
+        async function loadChatRooms() {
+            try {
+                const response = await apiCall('/chat/rooms');
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    chatRooms = result.data;
+                    displayChatRooms(chatRooms);
+                }
+            } catch (error) {
+                console.error('Error loading chat rooms:', error);
+            }
+        }
+
+        function displayChatRooms(rooms) {
+            const container = document.getElementById('chatRoomList');
+
+            if (rooms.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-8">Belum ada chat</p>';
+                return;
+            }
+
+            container.innerHTML = rooms.map(room => `
+                <div class="p-4 border-b hover:bg-gray-50 cursor-pointer ${room.unread_count > 0 ? 'bg-blue-50' : ''}" 
+                    onclick="openChatRoom(${room.id})">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-800">${room.teknisi_username}</p>
+                            <p class="text-sm text-gray-600 truncate">${room.last_message || 'Belum ada pesan'}</p>
+                            ${room.last_message_at ? `<p class="text-xs text-gray-500 mt-1">${room.last_message_at}</p>` : ''}
+                        </div>
+                        ${room.unread_count > 0 ? `
+                            <span class="bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
+                                ${room.unread_count}
+                            </span>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function openChatRoom(roomId) {
+            const room = chatRooms.find(r => r.id === roomId);
+            if (!room) return;
+
+            activeChatRoom = room;
+            document.getElementById('activeChatTeknisi').textContent = room.teknisi_username;
+
+            // Hide room list, show chat
+            document.getElementById('chatRoomList').classList.add('hidden');
+            document.getElementById('activeChat').classList.remove('hidden');
+
+            // Load messages
+            await loadChatMessages(roomId);
+
+            // Mark as read
+            markChatAsRead(roomId);
+        }
+
+        function backToRoomList() {
+            document.getElementById('chatRoomList').classList.remove('hidden');
+            document.getElementById('activeChat').classList.add('hidden');
+            activeChatRoom = null;
+        }
+
+        async function loadChatMessages(roomId) {
+            try {
+                const response = await apiCall(`/chat/rooms/${roomId}/messages`);
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    const container = document.getElementById('chatMessagesContainer');
+                    container.innerHTML = result.data.map(msg => createChatMessageHTML(msg)).join('');
+
+                    // Scroll to bottom
+                    container.scrollTop = container.scrollHeight;
+                }
+            } catch (error) {
+                console.error('Error loading messages:', error);
+            }
+        }
+
+        function createChatMessageHTML(msg) {
+            const isMe = msg.sender_username === currentUser.username;
+            return `
+                <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
+                    <div class="${isMe ? 'bg-blue-600 text-white' : 'bg-white text-gray-800'} rounded-lg px-4 py-2 max-w-xs shadow">
+                        ${!isMe ? `<p class="text-xs font-semibold mb-1">${msg.sender_username}</p>` : ''}
+                        <p class="text-sm">${msg.message}</p>
+                        <p class="text-xs ${isMe ? 'text-blue-100' : 'text-gray-500'} mt-1">${msg.created_at}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function addMessageToChatUI(msg) {
+            const container = document.getElementById('chatMessagesContainer');
+            container.innerHTML += createChatMessageHTML(msg);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chatMessageInput');
+            const message = input.value.trim();
+
+            if (!message || !activeChatRoom) return;
+
+            chatWs.send(JSON.stringify({
+                action: 'send_message',
+                room_id: activeChatRoom.id,
+                sender_role: currentUser.role === 'admin' ? 'admin' : 'admin_regional',
+                message: message
+            }));
+
+            input.value = '';
+        }
+
+        function markChatAsRead(roomId) {
+            chatWs.send(JSON.stringify({
+                action: 'mark_read',
+                room_id: roomId,
+                role: currentUser.role === 'admin' ? 'admin' : 'admin_regional'
+            }));
+
+            // Update UI
+            checkUnreadChats();
+        }
+
+        async function checkUnreadChats() {
+            try {
+                const response = await apiCall('/chat/rooms');
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    const totalUnread = result.data.reduce((sum, room) => sum + room.unread_count, 0);
+
+                    const badge = document.getElementById('chatNotifBadge');
+                    if (totalUnread > 0) {
+                        badge.textContent = totalUnread;
+                        badge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking unread:', error);
+            }
+        }
+
+        // Initialize chat if admin or admin regional
+        if (currentUser.role === 'admin_regional' || currentUser.role === 'admin') {
+            initChatSystem();
+        }
+    </script>
+</body>
+</html>

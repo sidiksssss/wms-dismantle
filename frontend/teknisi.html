@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#3B82F6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>WMS Dismantle - Teknisi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="manifest" href="manifest.json">
+</head>
+<body class="bg-gray-50">
+    <!-- Top Bar -->
+    <div class="bg-blue-600 text-white sticky top-0 z-50 shadow-lg">
+        <div class="flex items-center justify-between p-4">
+            <div>
+                <h1 class="text-lg font-bold">WMS Dismantle</h1>
+                <p class="text-xs text-blue-100" id="userName"></p>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button id="chatButton" onclick="openChat()" class="relative p-2 hover:bg-blue-700 rounded-full">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+                    </svg>
+                    <span id="chatBadge" class="hidden absolute top-0 right-0 bg-red-500 text-xs rounded-full w-5 h-5 flex items-center justify-center"></span>
+                </button>
+                <button onclick="logout()" class="p-2 hover:bg-blue-700 rounded-full">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="woList" class="p-4 pb-20">
+        <div class="mb-4">
+            <h2 class="text-lg font-semibold text-gray-800 mb-2">Work Order Anda</h2>
+            <div class="flex space-x-2 overflow-x-auto pb-2">
+                <button onclick="filterByStatus('all')" class="status-filter px-4 py-2 bg-blue-600 text-white rounded-full text-sm whitespace-nowrap active">
+                    Semua
+                </button>
+                <button onclick="filterByStatus('Scheduled')" class="status-filter px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm whitespace-nowrap">
+                    Scheduled
+                </button>
+                <button onclick="filterByStatus('In Progress')" class="status-filter px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm whitespace-nowrap">
+                    In Progress
+                </button>
+                <button onclick="filterByStatus('Completed')" class="status-filter px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm whitespace-nowrap">
+                    Completed
+                </button>
+            </div>
+        </div>
+
+        <div id="woCards" class="space-y-3">
+            <!-- WO Cards will be loaded here -->
+        </div>
+    </div>
+
+    <!-- WO Detail Modal -->
+    <div id="woModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+        <div class="min-h-screen px-4 py-8">
+            <div class="bg-white rounded-lg shadow-xl max-w-2xl mx-auto">
+                <div class="sticky top-0 bg-white border-b p-4 flex justify-between items-center rounded-t-lg">
+                    <h3 class="text-lg font-bold text-gray-800" id="woTitle"></h3>
+                    <button onclick="closeWOModal()" class="text-gray-500 hover:text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div id="woDetailContent" class="p-4">
+                    <!-- Detail will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Modal -->
+    <div id="chatModal" class="hidden fixed inset-0 bg-white z-50 flex flex-col">
+        <div class="bg-blue-600 text-white p-4 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <button onclick="closeChat()" class="p-2 hover:bg-blue-700 rounded-full">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </button>
+                <div>
+                    <h3 class="font-bold">Chat dengan Admin Regional</h3>
+                    <p class="text-xs text-blue-100" id="chatAdminName"></p>
+                </div>
+            </div>
+        </div>
+
+        <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+            <!-- Chat messages will appear here -->
+        </div>
+
+        <div class="bg-white border-t p-4">
+            <div class="flex space-x-2">
+                <input type="text" id="chatInput" placeholder="Ketik pesan..." 
+                    class="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onkeypress="if(event.key==='Enter') sendMessage()">
+                <button onclick="sendMessage()" class="bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Config untuk environment detection -->
+    <script src="config.js"></script>
+
+    <script>
+    const API_URL = window.APP_CONFIG.API_URL;
+    const WS_URL = window.APP_CONFIG.WS_URL;
+        let currentWO = null;
+        let currentFilter = 'all';
+        let ws = null;
+        let chatRoom = null;
+
+        // Check authentication
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+        if (!token || user.role !== 'teknisi') {
+            window.location.href = 'login.html';
+        }
+
+        document.getElementById('userName').textContent = user.full_name || user.username;
+
+        function apiCall(endpoint, options = {}) {
+            return fetch(`${API_URL}${endpoint}`, {
+                ...options,
+                headers: {
+                    ...options.headers,
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+        }
+
+        async function loadWorkOrders() {
+            try {
+                const response = await apiCall('/work-orders');
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    displayWorkOrders(result.data.records);
+                }
+            } catch (error) {
+                console.error('Error loading work orders:', error);
+                alert('Gagal memuat data WO');
+            }
+        }
+
+        function displayWorkOrders(workOrders) {
+            const container = document.getElementById('woCards');
+            
+            // Filter berdasarkan status
+            const filtered = currentFilter === 'all' 
+                ? workOrders 
+                : workOrders.filter(wo => wo.status_wo === currentFilter);
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-8">Tidak ada Work Order</p>';
+                return;
+            }
+
+            container.innerHTML = filtered.map(wo => `
+                <div class="bg-white rounded-lg shadow p-4 border-l-4 ${getStatusBorderColor(wo.status_wo)}" 
+                    onclick="openWODetail(${wo.id})">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <p class="font-bold text-gray-800">${wo.wo_id_xl}</p>
+                            <p class="text-sm text-gray-600">${wo.customer_id}</p>
+                        </div>
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(wo.status_wo)}">
+                            ${wo.status_wo || 'Scheduled'}
+                        </span>
+                    </div>
+                    <div class="text-sm text-gray-600 space-y-1">
+                        <p>📍 ${wo.city}</p>
+                        <p>📦 ${wo.product_name || '-'}</p>
+                        ${wo.updated_at ? `<p class="text-xs text-gray-500">Update: ${wo.updated_at}</p>` : ''}
+                    </div>
+                    ${wo.approval_status ? `
+                        <div class="mt-2 pt-2 border-t">
+                            <span class="text-xs px-2 py-1 rounded-full ${getApprovalColor(wo.approval_status)}">
+                                ${wo.approval_status === 'approved' ? '✅ Approved' : wo.approval_status === 'rejected' ? '❌ Rejected' : '⏳ Pending Approval'}
+                            </span>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        function filterByStatus(status) {
+            currentFilter = status;
+            
+            // Update button styles
+            document.querySelectorAll('.status-filter').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white', 'active');
+                btn.classList.add('bg-gray-200', 'text-gray-700');
+            });
+            event.target.classList.remove('bg-gray-200', 'text-gray-700');
+            event.target.classList.add('bg-blue-600', 'text-white', 'active');
+
+            loadWorkOrders();
+        }
+
+        async function openWODetail(woId) {
+            try {
+                const response = await apiCall(`/work-orders/${woId}`);
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    currentWO = result.data;
+                    displayWODetail(result.data);
+                    document.getElementById('woModal').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error loading WO detail:', error);
+                alert('Gagal memuat detail WO');
+            }
+        }
+
+        function displayWODetail(wo) {
+            document.getElementById('woTitle').textContent = wo.wo_id_xl;
+            
+            const photos = wo.photos;
+            let photosHtml = '<div class="grid grid-cols-2 gap-3 mt-4">';
+            
+            const photoFields = [
+                { key: 'foto_rumah', label: 'Foto Rumah' },
+                { key: 'foto_fat', label: 'Foto FAT' },
+                { key: 'foto_cabut_port', label: 'Cabut Port' },
+                { key: 'foto_ont', label: 'Foto ONT' },
+                { key: 'foto_adapter', label: 'Foto Adapter' },
+                { key: 'foto_kabel_lan', label: 'Kabel LAN' },
+                { key: 'foto_customer', label: 'Foto Customer' },
+                { key: 'foto_sn', label: 'SN ONT' }
+            ];
+
+            photoFields.forEach(field => {
+                const photoUrl = photos[field.key];
+                photosHtml += `
+                    <div class="border rounded-lg p-2 ${photoUrl ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-300'}">
+                        <p class="text-xs font-medium text-gray-700 mb-2">${field.label}</p>
+                        ${photoUrl 
+                            ? `<img src="${API_URL}/${photoUrl}" alt="${field.label}" class="w-full h-24 object-cover rounded cursor-pointer" onclick="viewFullImage('${API_URL}/${photoUrl}')">
+                               <button onclick="uploadPhoto('${field.key}', ${wo.id})" class="text-xs text-blue-600 mt-1 w-full">Ubah</button>`
+                            : `<label class="cursor-pointer flex flex-col items-center justify-center h-24 bg-gray-100 rounded border-2 border-dashed border-gray-300 hover:bg-gray-200">
+                                   <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                   </svg>
+                                   <span class="text-xs text-gray-500 mt-1">Upload</span>
+                                   <input type="file" class="hidden" accept="image/*" capture="environment" 
+                                          onchange="handlePhotoUpload(event, '${field.key}', ${wo.id})">
+                               </label>`
+                        }
+                    </div>
+                `;
+            });
+            photosHtml += '</div>';
+
+            document.getElementById('woDetailContent').innerHTML = `
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <p class="text-gray-500">Customer ID</p>
+                            <p class="font-semibold">${wo.customer_id}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Status</p>
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(wo.status_wo)}">
+                                ${wo.status_wo || 'Scheduled'}
+                            </span>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">City</p>
+                            <p class="font-semibold">${wo.city}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Product</p>
+                            <p class="font-semibold">${wo.product_name || '-'}</p>
+                        </div>
+                    </div>
+
+                    ${wo.approval_status && wo.approval_notes ? `
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                            <p class="text-sm font-medium text-gray-700">Catatan dari Admin Regional:</p>
+                            <p class="text-sm text-gray-600 mt-1">${wo.approval_notes}</p>
+                        </div>
+                    ` : ''}
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Update Status</label>
+                        <select id="statusSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="Scheduled" ${wo.status_wo === 'Scheduled' ? 'selected' : ''}>Scheduled</option>
+                            <option value="In Progress" ${wo.status_wo === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                            <option value="Completed" ${wo.status_wo === 'Completed' ? 'selected' : ''}>Completed</option>
+                            <option value="Full Collected" ${wo.status_wo === 'Full Collected' ? 'selected' : ''}>Full Collected</option>
+                            <option value="Partial Collected" ${wo.status_wo === 'Partial Collected' ? 'selected' : ''}>Partial Collected</option>
+                            <option value="Not Collected" ${wo.status_wo === 'Not Collected' ? 'selected' : ''}>Not Collected</option>
+                        </select>
+                        <button onclick="updateStatus()" class="w-full mt-3 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700">
+                            💾 Simpan Status
+                        </button>
+                    </div>
+
+                    <h3 class="font-semibold text-gray-800 mt-6">Upload Foto</h3>
+                    ${photosHtml}
+                </div>
+            `;
+        }
+
+        async function handlePhotoUpload(event, photoType, woId) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('photo_type', photoType);
+            formData.append('photo', file);
+
+            try {
+                const response = await apiCall(`/work-orders/${woId}`, {
+                    method: 'PUT',
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    alert('✅ Foto berhasil diupload!');
+                    openWODetail(woId); // Refresh detail
+                } else {
+                    alert('❌ Gagal upload foto: ' + (result.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error uploading photo:', error);
+                alert('❌ Error upload foto');
+            }
+        }
+
+        async function updateStatus() {
+            const newStatus = document.getElementById('statusSelect').value;
+            const formData = new FormData();
+            formData.append('status_wo', newStatus);
+
+            try {
+                const response = await apiCall(`/work-orders/${currentWO.id}`, {
+                    method: 'PUT',
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    alert('✅ Status berhasil diupdate!');
+                    closeWOModal();
+                    loadWorkOrders();
+                } else {
+                    alert('❌ Gagal update status');
+                }
+            } catch (error) {
+                console.error('Error updating status:', error);
+                alert('❌ Error update status');
+            }
+        }
+
+        function viewFullImage(url) {
+            window.open(url, '_blank');
+        }
+
+        function closeWOModal() {
+            document.getElementById('woModal').classList.add('hidden');
+            currentWO = null;
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'Scheduled': 'bg-yellow-100 text-yellow-800',
+                'In Progress': 'bg-blue-100 text-blue-800',
+                'Completed': 'bg-green-100 text-green-800',
+                'Full Collected': 'bg-green-100 text-green-800',
+                'Not Collected': 'bg-red-100 text-red-800',
+                'Partial Collected': 'bg-orange-100 text-orange-800'
+            };
+            return colors[status] || 'bg-gray-100 text-gray-800';
+        }
+
+        function getStatusBorderColor(status) {
+            const colors = {
+                'Scheduled': 'border-yellow-500',
+                'In Progress': 'border-blue-500',
+                'Completed': 'border-green-500',
+                'Full Collected': 'border-green-500',
+                'Not Collected': 'border-red-500',
+                'Partial Collected': 'border-orange-500'
+            };
+            return colors[status] || 'border-gray-300';
+        }
+
+        function getApprovalColor(status) {
+            const colors = {
+                'pending': 'bg-yellow-100 text-yellow-800',
+                'approved': 'bg-green-100 text-green-800',
+                'rejected': 'bg-red-100 text-red-800'
+            };
+            return colors[status] || 'bg-gray-100 text-gray-800';
+        }
+
+        // ===== CHAT SYSTEM =====
+        async function initChat() {
+            try {
+                // Get or create chat room
+                const formData = new FormData();
+                formData.append('teknisi_username', user.username);
+                
+                const response = await apiCall('/chat/rooms', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    chatRoom = result.data;
+                    document.getElementById('chatAdminName').textContent = chatRoom.admin_regional_username;
+                    
+                    // Connect WebSocket
+                    connectWebSocket();
+                    
+                    // Check unread messages
+                    checkUnreadMessages();
+                }
+            } catch (error) {
+                console.error('Error initializing chat:', error);
+            }
+        }
+
+        function connectWebSocket() {
+            ws = new WebSocket(`${WS_URL}/ws/chat/${user.username}`);
+            
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'new_message') {
+                    addMessageToChat(data.message);
+                    
+                    // Update unread badge if chat is closed
+                    if (document.getElementById('chatModal').classList.contains('hidden')) {
+                        checkUnreadMessages();
+                    }
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                // Reconnect after 3 seconds
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+
+        async function openChat() {
+            document.getElementById('chatModal').classList.remove('hidden');
+            await loadChatMessages();
+            markMessagesAsRead();
+        }
+
+        function closeChat() {
+            document.getElementById('chatModal').classList.add('hidden');
+        }
+
+        async function loadChatMessages() {
+            if (!chatRoom) return;
+
+            try {
+                const response = await apiCall(`/chat/rooms/${chatRoom.id}/messages`);
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    const container = document.getElementById('chatMessages');
+                    container.innerHTML = result.data.map(msg => createMessageHTML(msg)).join('');
+                    
+                    // Scroll to bottom
+                    container.scrollTop = container.scrollHeight;
+                }
+            } catch (error) {
+                console.error('Error loading messages:', error);
+            }
+        }
+
+        function createMessageHTML(msg) {
+            const isMe = msg.sender_username === user.username;
+            return `
+                <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
+                    <div class="${isMe ? 'bg-blue-600 text-white' : 'bg-white text-gray-800'} rounded-lg px-4 py-2 max-w-xs shadow">
+                        ${!isMe ? `<p class="text-xs font-semibold mb-1">${msg.sender_username}</p>` : ''}
+                        <p class="text-sm">${msg.message}</p>
+                        <p class="text-xs ${isMe ? 'text-blue-100' : 'text-gray-500'} mt-1">${msg.created_at}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function addMessageToChat(msg) {
+            const container = document.getElementById('chatMessages');
+            container.innerHTML += createMessageHTML(msg);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message || !chatRoom) return;
+
+            ws.send(JSON.stringify({
+                action: 'send_message',
+                room_id: chatRoom.id,
+                sender_role: 'teknisi',
+                message: message
+            }));
+
+            input.value = '';
+        }
+
+        async function markMessagesAsRead() {
+            if (!chatRoom) return;
+
+            ws.send(JSON.stringify({
+                action: 'mark_read',
+                room_id: chatRoom.id,
+                role: 'teknisi'
+            }));
+
+            // Update badge
+            document.getElementById('chatBadge').classList.add('hidden');
+        }
+
+        async function checkUnreadMessages() {
+            try {
+                const response = await apiCall('/chat/rooms');
+                const result = await response.json();
+
+                if (result.status === 'success' && result.data.length > 0) {
+                    const room = result.data[0];
+                    if (room.unread_count > 0) {
+                        const badge = document.getElementById('chatBadge');
+                        badge.textContent = room.unread_count;
+                        badge.classList.remove('hidden');
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking unread:', error);
+            }
+        }
+
+        function logout() {
+            if (ws) ws.close();
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        }
+
+        // Initialize
+        loadWorkOrders();
+        initChat();
+        
+        // Refresh WO every 30 seconds
+        setInterval(loadWorkOrders, 30000);
+        
+        // Check unread every 10 seconds
+        setInterval(checkUnreadMessages, 10000);
+
+        // Register service worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').then(() => {
+                console.log('Service Worker registered');
+            });
+        }
+    </script>
+</body>
+</html>
